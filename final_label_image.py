@@ -3,14 +3,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from picamera.array import PiRGBArray
-from picamera import PiCamera
-
 import argparse
 
 import numpy as np
 import tensorflow as tf
 import pandas as pd
+
+# for firebase/database
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
 
 # for barcode
 import pyzbar.pyzbar as pyzbar
@@ -24,10 +26,12 @@ import sys
 
 # Raspi lib
 import RPi.GPIO as GPIO
+from picamera.array import PiRGBArray
+from picamera import PiCamera
 
 EMULATE_HX711=False
 
-referenceUnit = 6.4
+referenceUnit = -21.7
 
 if not EMULATE_HX711:
     from hx711 import HX711
@@ -42,6 +46,14 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(addButton,GPIO.IN)
 GPIO.setup(subButton,GPIO.IN)
+
+# Fetch the service account key JSON file contents
+cred = credentials.Certificate('fir-listview-4994a-firebase-adminsdk.json')
+
+# Initialize the app with a service account, granting admin privileges
+firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://fir-listview-4994a.firebaseio.com//'
+})
 
 
 
@@ -212,14 +224,32 @@ def giveItemTable(imageFolder):
             item = labels[top_k[0]] #input item name as string
             print(item)
             
-        tab = [item,500.0,"13:45"]
+        time = datetime.now().strftime("%H:%M:%S")
+        tab = [item,val,time]
         df = pd.DataFrame(tab, index=[counter])
+        counter = counter + 1
+
+        data =  { 'fruitname': item,
+          'fruitWeight': val,
+          'dateTimes': time
+          }
+
+        if GPIO.input(addButton):
+            ref=db.reference('SmartFridge')
+            #box_ref=ref.child("DateTime:"+dt_string)
+            box_ref.set(data)
+            print("Added successfully") 
+
+        if GPIO.input(subButton):
+            ref=db.reference('SmartFridge')
+            #box_ref=ref.child("DateTime:"+dt_string)
+            box_ref.put(data)
+            print("Removed successfully") 
 
     '''
     for i in top_k:
         print(labels[i], results[i])
     '''
-    time = datetime.now().strftime("%H:%M:%S")
     dateString= datetime.now().date()
     print(df.head())
 
@@ -272,7 +302,7 @@ if __name__ == "__main__":
         output_layer = args.output_layer
 
     flag = 0
-    
+
     camera = PiCamera()
     camera.resolution = (640, 480)
     rawCapture = PiRGBArray(camera, size=(640, 480))
@@ -287,45 +317,44 @@ if __name__ == "__main__":
             val = int(hx.get_weight(5))
             print(val)
             
-            if val > 50:
-            #and GPIO.input(addButton):
+            if val > 50 and GPIO.input(addButton):
+
                 print("Weight detected - Add")
                 time.sleep(5)
                 print("image capture started")
-                
-                #capture image and save in folder
+
                 camera.capture(rawCapture, format = "bgr")
-                im = rawCapture.array
+                ret, im = rawCapture.array
                 now = datetime.now()
-                img_name = folder_path + "captured_images/"+ str(now) + "_{}.png".format(val)
+                img_name = folder_path + "captured_images/Add/"+ str(now) + "_{}.png".format(val)
                 cv2.imwrite(img_name, im)
                 rawCapture.truncate(0)
-                
+
                 print("image capture completed")
                 print("please remove the item and place a new one")
                 time.sleep(30) #30 seconds for user to remove fruit
-                
+
                 flag = 0
-                
+
             elif val > 50 and GPIO.input(subButton):
-                
+
                 print("Weight detected - Sub")
                 time.sleep(5)
                 print("image capture started")
-                
-                #capture image and save in folder
+
                 camera.capture(rawCapture, format = "bgr")
-                im = rawCapture.array
+                ret, im = rawCapture.array
                 now = datetime.now()
-                img_name = folder_path + "captured_images/"+ str(now) + "_{}.png".format(val)
+                img_name = folder_path + "captured_images/Sub/"+ str(now) + "_{}.png".format(val)
                 cv2.imwrite(img_name, im)
                 rawCapture.truncate(0)
-                
-                print("image capture completed")
-                print("please remove the item and place a new one")
+
+                print("Image capture completed")
+                print("Please remove the item and place a new one")
                 time.sleep(30) #30 seconds for user to remove fruit
-                
+
                 flag = 0
+                
             else:
                 cap.release()
                 
@@ -335,60 +364,17 @@ if __name__ == "__main__":
             
 
             if ((int(next_now.strftime('%H')) == int(now.strftime('%H'))) and (int(next_now.strftime('%M')) - int(now.strftime('%M')) > 1) and flag == 0) or ((int(next_now.strftime('%H')) > int(now.strftime('%H'))) and (int(next_now.strftime('%M')) > 1) and flag == 0):
-                #add a interupt to stop the loop if user want to add/remove more items
-                
-                #start processing
-                print("Starting procesing images")
-                time.sleep(0.5)
-                for files in os.listdir(folder_path + "test-images"):
-                    file_name = os.path.join(folder_path + "test-images", files)
-                    print(file_name)
+                #turn camera off
+                cap.release()
 
-                    if(Check_for_barcode(file_name)):
-                        # Read image
-                        im = cv2.imread(file_name)
-                        decodedObjects = decode(im)
+                if GPIO.input(addButton):
+                    giveItemTable("captured_images/Add")
 
-                        for obj in decodedObjects:
-                            # variable for database
-                            val = obj.data
-                            print(val)
-
-                    else:
-                        graph = load_graph(model_file)
-                        t = read_tensor_from_image_file(
-                            file_name,
-                            input_height=input_height,
-                            input_width=input_width,
-                            input_mean=input_mean,
-                            input_std=input_std)
-
-                        input_name = "import/" + input_layer
-                        output_name = "import/" + output_layer
-                        input_operation = graph.get_operation_by_name(input_name)
-                        output_operation = graph.get_operation_by_name(output_name)
-
-                        with tf.Session(graph=graph) as sess:
-                            results = sess.run(output_operation.outputs[0], {
-                                input_operation.outputs[0]: t
-                            })
-                        results = np.squeeze(results)
-
-                        top_k = results.argsort()[-5:][::-1]
-                        labels = load_labels(label_file)
-
-                        #variable for database
-                        item = labels[top_k[0]] #input item name as string
-                        print(item)
-
-                        '''
-                        for i in top_k:
-                            print(labels[i], results[i])
-                        '''
-                        time = time.strftime("%H:%M:%S")
-                        dateString= datetime.now().date() 
+                if GPIO.input(subButton):
+                    giveItemTable("captured_images/Sub")
                 
                 flag = 1
+
 
                 
         except (KeyboardInterrupt, SystemExit):
@@ -396,4 +382,3 @@ if __name__ == "__main__":
             cleanAndExit()
             cap.release()
             cv2.destroyAllWindows()
-            
