@@ -289,18 +289,42 @@ if __name__ == "__main__":
             
             if val > 50:
             #and GPIO.input(addButton):
+                print("Weight detected - Add")
+                time.sleep(5)
+                print("image capture started")
+                
+                #capture image and save in folder
                 camera.capture(rawCapture, format = "bgr")
                 im = rawCapture.array
                 now = datetime.now()
                 img_name = folder_path + "captured_images/"+ str(now) + "_{}.png".format(val)
                 cv2.imwrite(img_name, im)
                 rawCapture.truncate(0)
+                
+                print("image capture completed")
+                print("please remove the item and place a new one")
+                time.sleep(30) #30 seconds for user to remove fruit
+                
                 flag = 0
+                
             elif val > 50 and GPIO.input(subButton):
-                ret, im = cap.read()
+                
+                print("Weight detected - Sub")
+                time.sleep(5)
+                print("image capture started")
+                
+                #capture image and save in folder
+                camera.capture(rawCapture, format = "bgr")
+                im = rawCapture.array
                 now = datetime.now()
-                img_name = folder_path + "captured_images/Sub"+ str(now) + "_{}.png".format(val)
+                img_name = folder_path + "captured_images/"+ str(now) + "_{}.png".format(val)
                 cv2.imwrite(img_name, im)
+                rawCapture.truncate(0)
+                
+                print("image capture completed")
+                print("please remove the item and place a new one")
+                time.sleep(30) #30 seconds for user to remove fruit
+                
                 flag = 0
             else:
                 cap.release()
@@ -311,13 +335,60 @@ if __name__ == "__main__":
             
 
             if ((int(next_now.strftime('%H')) == int(now.strftime('%H'))) and (int(next_now.strftime('%M')) - int(now.strftime('%M')) > 1) and flag == 0) or ((int(next_now.strftime('%H')) > int(now.strftime('%H'))) and (int(next_now.strftime('%M')) > 1) and flag == 0):
-                #turn camera off
-                cap.release()
+                #add a interupt to stop the loop if user want to add/remove more items
                 
-                giveItemTable("test-images")
+                #start processing
+                print("Starting procesing images")
+                time.sleep(0.5)
+                for files in os.listdir(folder_path + "test-images"):
+                    file_name = os.path.join(folder_path + "test-images", files)
+                    print(file_name)
+
+                    if(Check_for_barcode(file_name)):
+                        # Read image
+                        im = cv2.imread(file_name)
+                        decodedObjects = decode(im)
+
+                        for obj in decodedObjects:
+                            # variable for database
+                            val = obj.data
+                            print(val)
+
+                    else:
+                        graph = load_graph(model_file)
+                        t = read_tensor_from_image_file(
+                            file_name,
+                            input_height=input_height,
+                            input_width=input_width,
+                            input_mean=input_mean,
+                            input_std=input_std)
+
+                        input_name = "import/" + input_layer
+                        output_name = "import/" + output_layer
+                        input_operation = graph.get_operation_by_name(input_name)
+                        output_operation = graph.get_operation_by_name(output_name)
+
+                        with tf.Session(graph=graph) as sess:
+                            results = sess.run(output_operation.outputs[0], {
+                                input_operation.outputs[0]: t
+                            })
+                        results = np.squeeze(results)
+
+                        top_k = results.argsort()[-5:][::-1]
+                        labels = load_labels(label_file)
+
+                        #variable for database
+                        item = labels[top_k[0]] #input item name as string
+                        print(item)
+
+                        '''
+                        for i in top_k:
+                            print(labels[i], results[i])
+                        '''
+                        time = time.strftime("%H:%M:%S")
+                        dateString= datetime.now().date() 
                 
                 flag = 1
-
 
                 
         except (KeyboardInterrupt, SystemExit):
