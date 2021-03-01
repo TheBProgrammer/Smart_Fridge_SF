@@ -1,7 +1,8 @@
-#TO be done
+#To be done
 1. Send the data to firebase
 2. Functionality to add/remove buttons
 3. delete the processed images
+4. Servo up and down
 
 # Classifying fruits on Jetson Nano
 Classification of fruits with transfer learning using Tensorflow on Jetson Nano.
