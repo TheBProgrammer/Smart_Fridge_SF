@@ -33,19 +33,27 @@ EMULATE_HX711=False
 
 referenceUnit = -21.7
 
+wait_time = 1
+
 if not EMULATE_HX711:
     from hx711 import HX711
 else:
     from emulated_hx711 import HX711
     
 #Button Pins
-addButton = 18
-subButton = 19
+addButton = 19 # Pin 35
+subButton = 16 # Pin 36
     
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(addButton,GPIO.IN)
 GPIO.setup(subButton,GPIO.IN)
+
+#Servo setup
+GPIO.setup(17,GPIO.OUT)
+servo1 = GPIO.PWM(17,50) #Pin 11 for servo1 and freq = 50 Hz
+GPIO.setup(18,GPIO.OUT)
+servo1 = GPIO.PWM(18,50) #Pin 12 for servo1 and freq = 50 Hz
 
 # Fetch the service account key JSON file contents
 cred = credentials.Certificate('fir-listview-4994a-firebase-adminsdk.json')
@@ -69,13 +77,13 @@ def cleanAndExit():
 def weight_init():
     
     global hx
-    hx = HX711(5, 6)
+    hx = HX711(5, 6) # Pin 29 and 31
     hx.set_reading_format("MSB","MSB")
     hx.set_reference_unit(referenceUnit)
     hx.reset()
     hx.tare()
 
-    print("Tare done! Add weight now...")
+    println("Tare done! Add weight now...")
 
 def load_graph(model_file):
     graph = tf.Graph()
@@ -140,6 +148,36 @@ def decode(im):
 
     return decodedObjects
 
+def arm_up():
+    servo1.start(0)
+    servo2.start(0)
+
+    servo1.ChangeDutyCycle(7.5)
+    time.sleep(1.5)
+    servo1.ChangeDutyCycle(7.5)
+    time.sleep(0.5)
+    servo1.ChangeDutyCycle(0)
+    servo2.ChangeDutyCycle(8.5)
+    time.sleep(0.5)
+    servo2.ChangeDutyCycle(0)
+    time.sleep(1)
+
+    println("Arm up !!")
+
+def arm_down():
+    servo1.start(0)
+    servo2.start(0)
+
+    servo2.ChangeDutyCycle(4.6)
+    time.sleep(1)
+    servo2.ChangeDutyCycle(4.6)
+    time.sleep(0.5)
+    servo2.ChangeDutyCycle(0)
+    servo1.ChangeDutyCycle(6.5)
+    time.sleep(0.5)
+    #servo1.stop()
+    
+    println("Arm down !!")
 
 # Display barcode and QR code location
 def display(im, decodedObjects):
@@ -253,7 +291,6 @@ def giveItemTable(imageFolder):
     dateString= datetime.now().date()
     print(df.head())
 
-
 if __name__ == "__main__":
 
     weight_init()
@@ -314,6 +351,10 @@ if __name__ == "__main__":
     
     while True:
         try:
+
+            arm_up()
+            time.sleep(10)
+
             val = int(hx.get_weight(5))
             print(val)
             
@@ -363,8 +404,9 @@ if __name__ == "__main__":
             next_now = datetime.now()
             
 
-            if ((int(next_now.strftime('%H')) == int(now.strftime('%H'))) and (int(next_now.strftime('%M')) - int(now.strftime('%M')) > 1) and flag == 0) or ((int(next_now.strftime('%H')) > int(now.strftime('%H'))) and (int(next_now.strftime('%M')) > 1) and flag == 0):
+            if ((int(next_now.strftime('%H')) == int(now.strftime('%H'))) and (int(next_now.strftime('%M')) - int(now.strftime('%M')) > wait_time) and flag == 0) or ((int(next_now.strftime('%H')) > int(now.strftime('%H'))) and (int(next_now.strftime('%M')) > wait_time) and flag == 0):
                 #turn camera off
+                arm_down()
                 cap.release()
 
                 if GPIO.input(addButton):
@@ -379,6 +421,10 @@ if __name__ == "__main__":
                 
         except (KeyboardInterrupt, SystemExit):
             hx.power_down()
+            servo1.stop()
+            servo2.stop()
+            GPIO.cleanup()
+            print("Goodbye")
             cleanAndExit()
             cap.release()
             cv2.destroyAllWindows()
