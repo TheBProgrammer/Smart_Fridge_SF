@@ -46,8 +46,10 @@ subButton = 16 # Pin 36
     
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
-GPIO.setup(addButton,GPIO.IN)
-GPIO.setup(subButton,GPIO.IN)
+
+#Button Setup
+GPIO.setup(addButton,GPIO.IN,pull_up_down=GPIO.PUD_UP)
+GPIO.setup(subButton,GPIO.IN,pull_up_down=GPIO.PUD_UP)
 
 #Servo setup
 GPIO.setup(17,GPIO.OUT)
@@ -289,47 +291,7 @@ def giveItemTable(imageFolder):
             firebase = pyrebase.initialize_app(firebaseConfig)
             db = firebase.database()
            
-            # Testing Start
-
-            things = db.child("items").get()
-                for fruits in things.each():
-                    val = things.val()
-                    for k,v in val.items():
-                        if (v['Item']) == j :
-                            present = True
-                            break
-                        else :
-                            present = False
-                    break  
-
-                if present :
-                    things = db.child("items").order_by_child("Item").equal_to(j).get()
-                    for fruits in things.each():
-                        #print("1")
-                        val = []
-                        val = things.val()
-                        #print(val)
-                        for k,v in val.items():
-                            #print (v['Item'])
-                            if v['Item'] == j :
-                                cWeight = v['Weight']
-                        iWeight = int(cWeight) + i
-                        uWeight = str(iWeight)
-                        print(uWeight)
-                        db.child("items").child(fruits.key()).update({'Weight' : uWeight,'TimeStamp':dt_string})
-                        print("Updated Successfully in Firebase")
-                else :
-                    data = {
-                    'Item': j,
-                    'TimeStamp': dt_string,
-                    'Weight': i
-                    }
-                    db.child("items").push(data)
-                    print("Added Successfully in Firebase")
-
-            # Testing End
-
-            if GPIO.input(addButton):
+            if add_state == False:
                 things = db.child("items").get()
                 for fruits in things.each():
                     val = things.val()
@@ -367,7 +329,7 @@ def giveItemTable(imageFolder):
                     print("Added Successfully in Firebase")
 
 
-            if GPIO.input(subButton):
+            if sub_state == False:
                 things = db.child("items").get()
                 for fruits in things.each():
                     val = things.val()
@@ -427,7 +389,7 @@ if __name__ == "__main__":
     servo1.start(0)
     servo2.start(0)
     arm_up()
-    time.sleep(20)
+    time.sleep(10)
     weight_init()
     
     folder_path = "/home/pi/Smart_Fridge/"
@@ -441,7 +403,7 @@ if __name__ == "__main__":
     input_layer = "Placeholder"
     output_layer = "final_result"
 
-    # no nee to use the parsers, i have added the default values
+    # no need to use the parsers, i have added the default values
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", help="image to be processed")
     parser.add_argument("--graph", help="graph/model to be executed")
@@ -487,6 +449,9 @@ if __name__ == "__main__":
     
     while True:
         try:
+            print("Press a Button to contnue - Add to insert items in Fridge, Sub to remove items to Fridge, Both to Cancel")
+            add_state = GPIO.input(addButton)
+            sub_state = GPIO.input(subButton)
             if down == True:
                 down = False
                 servo1.start(0)
@@ -494,11 +459,9 @@ if __name__ == "__main__":
                 arm_up()
             time.sleep(2)
             val = int(hx.get_weight(5))
-            print(val)
+            #print(val)
             
-            if val > 50 :
-            #and GPIO.input(addButton):
-
+            if val > 50 and add_state == False:
                 print("Weight detected - Add")
                 print (val)
                 weight.append(val)
@@ -519,7 +482,7 @@ if __name__ == "__main__":
 
                 flag = 0
 
-            elif val > 50 and GPIO.input(subButton):
+            elif val > 50 and sub_state == False:
 
                 print("Weight detected - Sub")
                 time.sleep(5)
@@ -544,26 +507,24 @@ if __name__ == "__main__":
             time.sleep(0.1)
 
             next_now = datetime.now()
-            
 
             if ((int(next_now.strftime('%H')) == int(now.strftime('%H'))) and (int(next_now.strftime('%M')) - int(now.strftime('%M')) > wait_time) and flag == 0) or ((int(next_now.strftime('%H')) > int(now.strftime('%H'))) and (int(next_now.strftime('%M')) > wait_time) and flag == 0):
                 #turn camera off
                 print("Processing Images. Please wait..")
                 arm_down()
                 cap.release()
-                
 
-                #if GPIO.input(addButton):
-                giveItemTable("captured_images/Add")
-                time.sleep(5)
-                delete_processed_images("captured_images/Add")
-                print("Processing Done!!")
-                servo1.start(0)
-                servo2.start(0)
-                arm_up()
-                down = False
+                if add_state == False:
+                    giveItemTable("captured_images/Add")
+                    time.sleep(5)
+                    delete_processed_images("captured_images/Add")
+                    print("Processing Done!!")
+                    servo1.start(0)
+                    servo2.start(0)
+                    arm_up()
+                    down = False
 
-                if GPIO.input(subButton):
+                if sub_state == False:
                     giveItemTable("captured_images/Sub")
                     time.sleep(5)
                     delete_processed_images("captured_images/Sub")
@@ -574,9 +535,13 @@ if __name__ == "__main__":
                     down = False
                     
                 flag = 1
-
-
                 
+            if add_state == False and sub_state == False:
+                servo1.start(0)
+                servo2.start(0)
+                arm_down()                
+
+             
         except (KeyboardInterrupt, SystemExit):
             hx.power_down()
             arm_down()
