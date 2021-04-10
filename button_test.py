@@ -3,12 +3,12 @@ import time
 
 GPIO.setmode(GPIO.BCM)
 
-GPIO.setup(35, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(36, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(19, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 while True:
-  add_state = GPIO.input(35)
-  sub_state = GPIO.input(36)
+  add_state = GPIO.input(19)
+  sub_state = GPIO.input(16)
   
   if add_state == False:
     print ('Add Button Pressed')
