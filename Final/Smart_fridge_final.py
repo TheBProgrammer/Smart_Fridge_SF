@@ -279,13 +279,13 @@ def giveItemTable(imageFolder):
         
         for (i, j) in zip(weight, item):
             dt_string = now.strftime("%d/%m/%Y - %H:%M:%S")
-            firebaseConfig = { 'apiKey': "AIzaSyA2NIKjW9kD31eeRnFDZhpW02q443AoIBA",
-            'authDomain': "smart-fridge-94bff.firebaseapp.com",
-            'databaseURL': "https://smart-fridge-94bff-default-rtdb.firebaseio.com",
-            'projectId': "smart-fridge-94bff",
-            'storageBucket': "smart-fridge-94bff.appspot.com",
-            'messagingSenderId': "625536633101",
-            'appId': "1:625536633101:web:d4951c5cc692fac0364844"
+            firebaseConfig = { 'apiKey': "****************",
+            'authDomain': "************",
+            'databaseURL': "********",
+            'projectId': "*************",
+            'storageBucket': "***********",
+            'messagingSenderId': "****************",
+            'appId': "***************"
             }
 
             firebase = pyrebase.initialize_app(firebaseConfig)
