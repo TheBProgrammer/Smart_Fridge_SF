@@ -39,7 +39,7 @@ EMULATE_HX711=False
 
 referenceUnit = -22.5
 
-wait_time = 1
+wait_time = 0.2
 
 if not EMULATE_HX711:
     from hx711 import HX711
@@ -151,6 +151,8 @@ def decode(im):
 def arm_up():
     #servo1.start(0)
     #servo2.start(0)
+    
+    down = False
 
     servo1.ChangeDutyCycle(7.5)
     time.sleep(1.5)
@@ -592,8 +594,8 @@ class Ui_SmartFridge(object):
         self.tableWidget.setDragDropOverwriteMode(False)
         self.tableWidget.setObjectName("tableWidget")
         self.tableWidget.setColumnCount(2)
-        self.tableWidget.setColumnWidth(0,230)
-        self.tableWidget.setColumnWidth(1,230)
+        self.tableWidget.setColumnWidth(0,440)
+        self.tableWidget.setColumnWidth(1,440)
         self.loaddata()
         item = QtWidgets.QTableWidgetItem()
         item.setTextAlignment(QtCore.Qt.AlignCenter)
@@ -640,8 +642,7 @@ class Ui_SmartFridge(object):
 
         self.retranslateUi(SmartFridge)
         QtCore.QMetaObject.connectSlotsByName(SmartFridge)
-
-
+        
         sys.stdout = Stream(newText=self.onUpdateText)
 
     def onUpdateText(self, text):
@@ -668,15 +669,18 @@ class Ui_SmartFridge(object):
     def AddItemclicked(self):
         self.Mode.setText("Add Item Mode")
         print("Add Item Mode")
+        now = datetime.now()
         Add = True
         Remove = False
+        '''
         if down == True:
             down = False
             servo1.start(0)
             servo2.start(0)
             arm_up()
             time.sleep(2)
-        for i in range(1,10):
+        '''
+        while True:
             val = int(hx.get_weight(5))
             print(val)
             if val > 50:
@@ -695,36 +699,41 @@ class Ui_SmartFridge(object):
 
                 print("Image capture completed")
                 print("Please remove the item and place a new one")
-                time.sleep(20) #30 seconds for user to remove fruit
+                time.sleep(50) #30 seconds for user to remove fruit
 
                 flag = 0
-        print("Processing Images. Please wait..")
-        arm_down()
-        cap.release()
-                
-
-        #if GPIO.input(addButton):
-        giveItemTable("captured_images/Add")
-        time.sleep(5)
-        #delete_processed_images("captured_images/Add")
-        print("Processing Done!!")
-        servo1.start(0)
-        servo2.start(0)
-        arm_up()
-        down = False
-
+            next_now = datetime.now()
+            if ((int(next_now.strftime('%H')) == int(now.strftime('%H'))) and (int(next_now.strftime('%M')) - int(now.strftime('%M')) > wait_time) and flag == 0) or ((int(next_now.strftime('%H')) > int(now.strftime('%H'))) and (int(next_now.strftime('%M')) > wait_time) and flag == 0):
+                print("Processing Images. Please wait..")
+                arm_down()
+                cap.release()
+                #if GPIO.input(addButton):
+                giveItemTable("captured_images/Add")
+                time.sleep(5)
+                #delete_processed_images("captured_images/Add")
+                print("Processing Done!!")
+                servo1.start(0)
+                servo2.start(0)
+                arm_up()
+                down = False
+                self.Mode.setText( "Press any button to continue...")
+                break
+  
     def RemoveItemclicked(self):
         self.Mode.setText("Remove Item Mode")
         print("Remove Item Mode")
         Add = False
         Remove = True
+        now = datetime.now()
+        '''
         if down == True:
             down = False
             servo1.start(0)
             servo2.start(0)
             arm_up()
             time.sleep(2)
-        for i in range(1,10):
+           '''
+        while True:
             val = int(hx.get_weight(5))
             print(val)
             if val > 50:
@@ -744,19 +753,22 @@ class Ui_SmartFridge(object):
                 time.sleep(30) #30 seconds for user to remove fruit
 
                 flag = 0
-        print("Processing Images. Please wait..")
-        arm_down()
-        cap.release()
-                
-        #if GPIO.input(addButton):
-        giveItemTable("captured_images/Sub")
-        time.sleep(5)
-        #delete_processed_images("captured_images/Sub")
-        print("Processing Done!!")
-        servo1.start(0)
-        servo2.start(0)
-        arm_up()
-        down = False
+            next_now = datetime.now()
+            if ((int(next_now.strftime('%H')) == int(now.strftime('%H'))) and (int(next_now.strftime('%M')) - int(now.strftime('%M')) > wait_time) and flag == 0) or ((int(next_now.strftime('%H')) > int(now.strftime('%H'))) and (int(next_now.strftime('%M')) > wait_time) and flag == 0):
+                print("Processing Images. Please wait..")
+                arm_down()
+                cap.release()
+                #if GPIO.input(addButton):
+                giveItemTable("captured_images/Sub")
+                time.sleep(5)
+                #delete_processed_images("captured_images/Sub")
+                print("Processing Done!!")
+                servo1.start(0)
+                servo2.start(0)
+                arm_up()
+                down = False
+                self.Mode.setText( "Press any button to continue...")
+                break
 
     def loaddata(self):
         data = []
@@ -791,7 +803,7 @@ class Ui_SmartFridge(object):
 "ITEM"))
         self.RemoveItem.setText(_translate("SmartFridge", "REMOVE \n"
 "ITEM"))
-        self.Mode.setText(_translate("SmartFridge", "Press any button to continue..."))
+        self.Mode.setText( "Press any button to continue...")
         item = self.tableWidget.horizontalHeaderItem(0)
         item.setText(_translate("SmartFridge", "Item Name"))
         item = self.tableWidget.horizontalHeaderItem(1)
@@ -803,13 +815,12 @@ class Ui_SmartFridge(object):
 
 
 if __name__ == "__main__":
-    Add = True
-    Remove = False
-
+ 
     print("Arming Up ! Please wait...")
     servo1.start(0)
     servo2.start(0)
     arm_up()
+    down = False
     time.sleep(2)
     weight_init()
     
