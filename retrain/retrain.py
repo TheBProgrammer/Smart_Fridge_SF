@@ -1,22 +1,4 @@
-# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-# NOTICE: This work was derived from tensorflow/examples/image_retraining
-# and modified to use TensorFlow Hub modules.
-
-# pylint: disable=line-too-long
-r"""Simple transfer learning with image modules from TensorFlow Hub.
+"""Simple transfer learning with image modules from TensorFlow Hub.
 
 This example shows how to train an image classifier based on any
 TensorFlow Hub module that computes image feature vectors. By default,
@@ -29,28 +11,12 @@ representation. If the softmax layer contains N labels, this corresponds
 to learning N + 2048*N model parameters for the biases and weights.
 
 Here's an example, which assumes you have a folder containing class-named
-subfolders, each full of images for each label. The example folder flower_photos
-should have a structure like this:
-
-~/flower_photos/daisy/photo1.jpg
-~/flower_photos/daisy/photo2.jpg
-...
-~/flower_photos/rose/anotherphoto77.jpg
-...
-~/flower_photos/sunflower/somepicture.jpg
+subfolders, each full of images for each label. 
 
 The subfolder names are important, since they define what label is applied to
 each image, but the filenames themselves don't matter. (For a working example,
 download http://download.tensorflow.org/example_images/flower_photos.tgz
 and run  tar xzf flower_photos.tgz  to unpack it.)
-
-Once your images are prepared, and you have pip-installed tensorflow-hub and
-a sufficiently recent version of tensorflow, you can run the training with a
-command like this:
-
-```bash
-python retrain.py --image_dir ~/flower_photos
-```
 
 You can replace the image_dir argument with any folder containing subfolders of
 images. The label for each image is taken from the name of the subfolder it's
@@ -71,14 +37,14 @@ For example:
 Run floating-point version of Mobilenet:
 
 ```bash
-python retrain.py --image_dir ~/flower_photos \
+python retrain.py --image_dir ~/train \
     --tfhub_module https://tfhub.dev/google/imagenet/mobilenet_v1_100_224/feature_vector/3
 ```
 
 Run Mobilenet, instrumented for quantization:
 
 ```bash
-python retrain.py --image_dir ~/flower_photos/ \
+python retrain.py --image_dir ~/train/ \
     --tfhub_module https://tfhub.dev/google/imagenet/mobilenet_v1_100_224/quantops/feature_vector/3
 ```
 
